@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { GetServerSideProps } from 'next';
+import {verifyToken} from '../lib/auth'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -113,3 +115,33 @@ export default function Home() {
     </div>
   );
 }
+export const getServerSideProps: GetServerSideProps = async (context) => {
+	const { req } = context;
+	const token = req.cookies.token;
+
+	if (!token) {
+		return {
+			redirect: {
+        	destination: "/login",
+        	permanent: false,
+      		},
+    	};
+  	}
+
+  	try {
+    	const decoded = verifyToken(token);
+    	return {
+      	props: {
+        	user: decoded,
+      		},
+    	};
+  	} catch (err) {
+		console.log(err)
+    	return {
+      	redirect: {
+        	destination: "/login",
+        	permanent: false,
+      		},
+    	};
+  	}
+};
