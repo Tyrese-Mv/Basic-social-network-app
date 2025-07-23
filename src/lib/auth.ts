@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { NextApiRequest } from 'next';
+// import { NextApiRequest } from 'next'
+import { IncomingMessage } from 'http';
 import cookie from 'cookie';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -54,7 +55,7 @@ export function verifyToken(token: string) {
     }
   }
 
-  export function getUserFromRequest(req: NextApiRequest): { userId: string, email: string } | null {
+  export function getUserFromRequest(req: IncomingMessage): { userId: string, email: string } | null {
     try {
       const cookies = cookie.parse(req.headers.cookie || '');
       const token = cookies.token;
