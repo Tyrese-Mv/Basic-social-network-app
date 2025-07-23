@@ -15,18 +15,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!user) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
-    
+    //, imageUrl
       const { content } = req.body;
       const postId = uuidv4();
       const timestamp = Date.now();
     
       const command = new PutItemCommand({
-        TableName: process.env.TABLE_NAME,
+        TableName: process.env.USERS_TABLE,
         Item: {
-          PK: { S: `USER#${user.email}` },
+          PK: { S: `USER#${user.userId}` },
           SK: { S: `POST#${postId}` },
           content: { S: content },
-        //   imageUrl: imageUrl ? { S: imageUrl } : { NULL: true },
+          // imageUrl: imageUrl ? { S: imageUrl } : { NULL: true },
           timestamp: { N: timestamp.toString() },
           itemType: { S: 'POST' }
         },
