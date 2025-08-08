@@ -29,7 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const followKey = {
         PK: `USER#${loggedInUserId}`,
         SK: `FOLLOW#${profileId}`
-      };
+    };
+    const followerKey = {
+        PK: `USER#${profileId}`,
+        SK: `FOLLOW#${loggedInUserId}`
+    };
     
     try {
         if (req.method === 'POST') {
@@ -43,6 +47,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     }
                 })
             );
+            await ddb.send(
+                new PutCommand({
+                TableName: USERS_TABLE,
+                Item: {
+                    ...followerKey,
+                    itemType: 'FOLLOWER',
+                    timestamp: Date.now()
+                    }
+                })
+            );
             return res.status(200).json({ message: 'Followed successfully' });
         } 
         
@@ -51,6 +65,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 new DeleteCommand({
                     TableName: USERS_TABLE,
                     Key: followKey
+                })
+            );
+            await ddb.send(
+                new DeleteCommand({
+                    TableName: USERS_TABLE,
+                    Key: followerKey
                 })
             );
             return res.status(200).json({ message: 'Unfollowed successfully' });
