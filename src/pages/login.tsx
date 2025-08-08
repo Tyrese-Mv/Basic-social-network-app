@@ -25,7 +25,7 @@ const Login: React.FC = () => {
           body: JSON.stringify({ token: res.token }),
         });
         setToken(res.token);
-        router.push('/');
+        router.push('/feed');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }, message?: string };
