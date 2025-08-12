@@ -29,8 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const result = await ddb.send(command);
         const posts = result.Items?.map((item) => unmarshall(item)) || [];
         res.status(200).json({ posts });
-    } catch (err) {
-        console.error('Get Posts Error:', err);
+    } catch {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
