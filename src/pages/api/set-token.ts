@@ -3,6 +3,9 @@ import cookie from 'cookie';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
+    if (req.body == undefined){
+      return res.status(400).json({ message: 'Token required' });
+    }
     const { token } = req.body;
     if (!token) {
       return res.status(400).json({ message: 'Token required' });
