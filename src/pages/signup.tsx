@@ -79,7 +79,7 @@ const Register: React.FC = () => {
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <Button fullWidth variant="contained" type="submit" sx={{ mt: 2 }}>
+          <Button fullWidth variant="contained" name="Register" type="submit" sx={{ mt: 2 }}>
             Register
           </Button>
           {message && (
