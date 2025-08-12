@@ -7,16 +7,10 @@ import { ddb } from "@/lib/aws-config";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import SuggestedProfilesCarousel from "@/components/SuggestedProfilesCarousel";
 import { getUserFromRequest } from "@/lib/auth";
+import { Post } from "@/lib/utils";
 
 const USERS_TABLE = process.env.USERS_TABLE!;
 
-type Post = {
-  PK: string;
-  SK: string;
-  content: string;
-  username: string;
-  timestamp?: number;
-};
 
 type Props = {
   posts: Post[];
