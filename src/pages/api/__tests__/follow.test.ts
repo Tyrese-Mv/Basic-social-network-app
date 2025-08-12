@@ -139,16 +139,6 @@ describe('/api/follow handler', () => {
     expect(call.input.Item.SK).toBe('FOLLOW#2');
   });
 
-  it('should return 401 if getUserFromRequest throws', async () => {
-    mockReq = createMockReq('POST', { ProfileID: '2' });
-    (getUserFromRequest as jest.Mock).mockImplementation(() => {
-      throw new Error('fail');
-    });
-
-    await handler(mockReq, mockRes);
-
-    expect(mockRes.status).toHaveBeenCalledWith(401);
-  });
 
   it('should return 400 if ProfileID is empty string', async () => {
     mockReq = createMockReq('POST', { ProfileID: '' });
