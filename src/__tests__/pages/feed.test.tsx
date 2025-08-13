@@ -22,7 +22,7 @@ jest.mock('@/lib/aws-config', () => ({
 }));
 
 jest.mock('@aws-sdk/client-dynamodb', () => ({
-  ScanCommand: function ScanCommand(this: { [key: string]: unknown }, input: unknown) { Object.assign(this, input); },
+  QueryCommand: function QueryCommand(this: { [key: string]: unknown }, input: unknown) { Object.assign(this, input); },
 }));
 
 jest.mock('@aws-sdk/util-dynamodb', () => ({
@@ -37,7 +37,7 @@ describe('Feed page', () => {
 
   test('renders title', () => {
     render(<FeedPage posts={posts as Post[]} userId="u1" />);
-    expect(screen.getByText(/Your Feed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Feed/i)).toBeInTheDocument();
   });
 
   test('renders CreatePostComponent', () => {
@@ -80,7 +80,11 @@ describe('Feed page', () => {
   test('getServerSideProps returns posts when user present', async () => {
     process.env.USERS_TABLE = 'Users';
     const { ddb } = jest.requireMock('@/lib/aws-config');
-    ddb.send.mockResolvedValueOnce({ Items: [{ PK: 'USER#u2', SK: 'POST#1', content: 'Hi', username: 'u2' }] });
+    // 1) following list for u1 → follows u2
+    ddb.send
+      .mockResolvedValueOnce({ Items: [{ SK: { S: 'FOLLOW#u2' } }] })
+      // 2) posts for u2
+      .mockResolvedValueOnce({ Items: [{ PK: { S: 'USER#u2' }, SK: { S: 'POST#1' }, content: { S: 'Hi' }, username: { S: 'u2' }, timestamp: { N: '1' } }] });
 
     const ctx = { req: {} } as unknown as GetServerSidePropsContext;
     const res = await getServerSideProps(ctx);
