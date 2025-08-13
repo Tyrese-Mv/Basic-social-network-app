@@ -51,37 +51,53 @@ describe('/api/posts handler', () => {
     expect(mockRes.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
   });
 
-  it('should return posts if authenticated and DB query succeeds', async () => {
+  it('should return posts from followed users, sorted by timestamp desc', async () => {
     mockReq = { method: 'GET' } as NextApiRequest;
-    (getUserFromRequest as jest.Mock).mockReturnValue({ email: 'test@example.com' });
+    (getUserFromRequest as jest.Mock).mockReturnValue({ userId: '1', email: 'test@example.com' });
 
-    const mockItems = [
-      { PK: { S: 'USER#test@example.com' }, SK: { S: 'POST#1' }, Title: { S: 'Post 1' } },
-      { PK: { S: 'USER#test@example.com' }, SK: { S: 'POST#2' }, Title: { S: 'Post 2' } },
-    ];
+    // 1) Following list response: user 1 follows user 2 and 3
+    (ddb.send as jest.Mock)
+      .mockResolvedValueOnce({
+        Items: [
+          { SK: { S: 'FOLLOW#2' } },
+          { SK: { S: 'FOLLOW#3' } },
+        ],
+      })
+      // 2) Posts for user 2
+      .mockResolvedValueOnce({
+        Items: [
+          { PK: { S: 'USER#2' }, SK: { S: 'POST#a' }, timestamp: { N: '100' }, Title: { S: 'U2 Post' } },
+        ],
+      })
+      // 3) Posts for user 3
+      .mockResolvedValueOnce({
+        Items: [
+          { PK: { S: 'USER#3' }, SK: { S: 'POST#b' }, timestamp: { N: '200' }, Title: { S: 'U3 Post' } },
+        ],
+      });
 
-    (ddb.send as jest.Mock).mockResolvedValue({ Items: mockItems });
     (unmarshall as jest.Mock).mockImplementation((item) => ({
       pk: item.PK.S,
       sk: item.SK.S,
       title: item.Title.S,
+      timestamp: Number(item.timestamp.N),
     }));
 
     await handler(mockReq, mockRes);
 
-    expect(ddb.send).toHaveBeenCalledWith(expect.any(QueryCommand));
+    expect(ddb.send).toHaveBeenCalledWith(expect.any(QueryCommand)); // following query
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith({
       posts: [
-        { pk: 'USER#test@example.com', sk: 'POST#1', title: 'Post 1' },
-        { pk: 'USER#test@example.com', sk: 'POST#2', title: 'Post 2' },
+        { pk: 'USER#3', sk: 'POST#b', title: 'U3 Post', timestamp: 200 },
+        { pk: 'USER#2', sk: 'POST#a', title: 'U2 Post', timestamp: 100 },
       ],
     });
   });
 
   it('should return 500 if DynamoDB throws an error', async () => {
     mockReq = { method: 'GET' } as NextApiRequest;
-    (getUserFromRequest as jest.Mock).mockReturnValue({ email: 'test@example.com' });
+    (getUserFromRequest as jest.Mock).mockReturnValue({ userId: '1', email: 'test@example.com' });
     (ddb.send as jest.Mock).mockRejectedValue(new Error('DynamoDB failure'));
 
     await handler(mockReq, mockRes);
