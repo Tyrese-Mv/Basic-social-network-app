@@ -2,12 +2,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CreatePostComponent } from "@/components/CreatePost";
 import type { GetServerSideProps } from "next";
-import { ScanCommand } from "@aws-sdk/client-dynamodb";
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { ddb } from "@/lib/aws-config";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import SuggestedProfilesCarousel from "@/components/SuggestedProfilesCarousel";
 import { getUserFromRequest } from "@/lib/auth";
 import { Post } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const USERS_TABLE = process.env.USERS_TABLE!;
 
@@ -18,10 +20,14 @@ type Props = {
 };
 
 export default function FeedPage({ posts, userId }: Props) {
-	console.log(posts)
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-4xl font-bold mb-10 text-center">Your Feed</h1>
+      <div className="flex items-center justify-between mb-10">
+        <h1 className="text-4xl font-bold text-center">Feed</h1>
+        <Button asChild>
+          <Link href={`/profile/${userId}`}>My Profile</Link>
+        </Button>
+      </div>
 
       <div className="mb-10">
         <CreatePostComponent />
@@ -86,21 +92,56 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
 	const userId = user.userId
 
-    const params = {
+    // 1) Get followed user IDs
+    const followingQuery = new QueryCommand({
       TableName: USERS_TABLE,
-      FilterExpression: "itemType = :post",
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: {
-        ":post": { S: "POST" },
+        ':pk': { S: `USER#${userId}` },
+        ':sk': { S: 'FOLLOW#' },
       },
-    };
+      ProjectionExpression: 'SK',
+    });
 
-    const command = new ScanCommand(params);
-    const result = await ddb.send(command);
+    const followingResult = await ddb.send(followingQuery);
+    const followedUserIds = (followingResult.Items || [])
+      .map((item) => (item.SK && 'S' in item.SK ? (item.SK.S as string) : ''))
+      .map((sk) => sk.split('#')[1])
+      .filter((id): id is string => Boolean(id));
+
+    if (followedUserIds.length === 0) {
+      return {
+        props: {
+          posts: [],
+          userId,
+        },
+      };
+    }
+
+    // 2) Fetch posts per followed user in parallel
+    const postQueryPromises = followedUserIds.map((followedId) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: USERS_TABLE,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: {
+            ':pk': { S: `USER#${followedId}` },
+            ':sk': { S: 'POST#' },
+          },
+        })
+      )
+    );
+
+    const postResults = await Promise.all(postQueryPromises);
+    const allItems = postResults.flatMap((r) => r.Items || []);
+    const posts = allItems.map((item) => unmarshall(item) as Post);
+
+    posts.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 
     return {
       props: {
-        posts: result.Items ? result.Items.map((item) => unmarshall(item)) : [],
-		userId: userId,
+        posts,
+        userId,
       },
     };
   } catch (err) {
