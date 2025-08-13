@@ -19,7 +19,7 @@ const Register: React.FC = () => {
       const response = await signup(email, password, name, surname, username);
       if (response) {
         setMessage('Account created successfully!');
-        router.push('/');
+        router.push('/login');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
